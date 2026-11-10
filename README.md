@@ -9,7 +9,7 @@ npm install
 npm run dev
 ```
 
-Abra http://localhost:5173.
+Abra http://localhost:5173. O app começa vazio: crie suas categorias e contas em **Personalizar** (ou use as sugeridas), importe do Nubank, ou explore com dados fictícios pelo Painel.
 
 - `npm test` — testes dos leitores de arquivo do Nubank
 - `npm run build` — versão de produção em `dist/`

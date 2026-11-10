@@ -1,6 +1,8 @@
 import { useMemo } from 'react'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Legend } from 'recharts'
-import { ArrowDownCircle, ArrowUpCircle, Wallet, Clock, Check } from 'lucide-react'
+import { ArrowDownCircle, ArrowUpCircle, Wallet, Clock, Check, Settings, Sparkles, Upload, FlaskConical } from 'lucide-react'
+import { criarSugestoes } from '../lib/db'
+import { carregarExemplo } from '../lib/exemplo'
 import { useApp } from '../app/contexto'
 import { Cabecalho } from '../components/Cabecalho'
 import { Barra, Vazio } from '../components/ui'
@@ -9,7 +11,23 @@ import { addMes, dataBR, moeda, nomeMes } from '../lib/format'
 import { alternarPago } from '../lib/acoes'
 import type { Dados } from '../lib/types'
 
-const COR_GRUPO = { parcelas: '#f59e0b', fixas: '#6366f1', avulsos: '#0ea5e9' }
+function BoasVindas() {
+  const { ir } = useApp()
+  return (
+    <div className="card mb-4 border-[var(--accent)]/40">
+      <h2 className="text-lg font-semibold">Bem-vindo! Seu app está vazio 👋</h2>
+      <p className="mt-1 text-sm text-slate-500">Comece do jeito que preferir. Nada é criado sem você pedir.</p>
+      <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <button className="btn-primary" onClick={() => ir('personalizar')}><Settings size={16} /> Criar categorias e contas</button>
+        <button className="btn-outline" onClick={() => criarSugestoes()}><Sparkles size={16} /> Usar categorias sugeridas</button>
+        <button className="btn-outline" onClick={() => ir('importar')}><Upload size={16} /> Importar do Nubank</button>
+        <button className="btn-outline" onClick={() => confirm('Carregar dados fictícios para explorar o app? Depois é só usar "Apagar tudo" em Personalizar.') && carregarExemplo()}><FlaskConical size={16} /> Explorar com dados fictícios</button>
+      </div>
+    </div>
+  )
+}
+
+const COR_GRUPO ={ parcelas: '#f59e0b', fixas: '#6366f1', avulsos: '#0ea5e9' }
 
 export default function Painel({ dados }: { dados: Dados }) {
   const { mes, setMes, ir } = useApp()
@@ -49,9 +67,12 @@ export default function Painel({ dados }: { dados: Dados }) {
     { nome: 'Ainda a pagar', valor: r.aPagar, Icone: Clock, cor: 'text-amber-500' },
   ]
 
+  const semNada = !dados.categorias.length && !dados.contas.length && !dados.lancamentos.length && !dados.parcelados.length && !dados.recorrentes.length
+
   return (
     <div>
       <Cabecalho titulo="Painel" />
+      {semNada && <BoasVindas />}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {cards.map(({ nome, valor, Icone, cor }) => (
           <div key={nome} className="card">
@@ -102,7 +123,7 @@ export default function Painel({ dados }: { dados: Dados }) {
                 onClick={(e: any) => { const i = Number(e?.activeTooltipIndex ?? e?.activeIndex); if (projecao[i]) { setMes(projecao[i].mes); ir('extrato') } }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#94a3b833" />
                 <XAxis dataKey="rotulo" fontSize={11} tickLine={false} />
-                <YAxis fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `${Math.round(v / 1000)}k`} width={32} />
+                <YAxis fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : String(v))} allowDecimals={false} width={32} />
                 <Tooltip formatter={(v) => moeda(Number(v))} />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
                 <Bar dataKey="parcelas" name="Parcelas" stackId="d" fill={COR_GRUPO.parcelas} />

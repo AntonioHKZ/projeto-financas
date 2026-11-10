@@ -42,7 +42,8 @@ export const CONTAS_PADRAO: Omit<Conta, 'id'>[] = [
   { nome: 'Dinheiro', tipo: 'dinheiro', cor: '#16a34a' },
 ]
 
-export async function garantirPadrao() {
+/** Cria as categorias e contas sugeridas (só as que ainda não existem). Opcional — o app começa vazio. */
+export async function criarSugestoes() {
   await db.transaction('rw', db.categorias, db.contas, async () => {
     if ((await db.categorias.count()) === 0)
       await db.categorias.bulkAdd(CATEGORIAS_PADRAO.map((c) => ({ ...c, id: uid() })))

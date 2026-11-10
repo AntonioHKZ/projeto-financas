@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { Moon, Sun, Plus, Trash2, Download, Upload, Sparkles, AlertTriangle } from 'lucide-react'
 import { Cabecalho } from '../components/Cabecalho'
 import { aplicarDestaque, aplicarTema, CORES_DESTAQUE, destaqueAtual, temaAtual } from '../app/tema'
-import { apagarTudo, db, exportarTudo, garantirPadrao, substituirTudo } from '../lib/db'
+import { apagarTudo, criarSugestoes, db, exportarTudo, substituirTudo } from '../lib/db'
 import { carregarExemplo } from '../lib/exemplo'
 import { hojeISO, parseValorBR, uid } from '../lib/format'
 import type { Categoria, Conta, Dados } from '../lib/types'
@@ -68,7 +68,7 @@ export default function Personalizar({ dados }: { dados: Dados }) {
             <input ref={arquivo} type="file" accept=".json,application/json" hidden onChange={(e) => importar(e.target.files?.[0])} />
             <button className="btn-outline" onClick={async () => confirm('Carregar dados de exemplo vai SUBSTITUIR os dados atuais. Continuar?') && (await carregarExemplo())}><Sparkles size={16} /> Carregar exemplo</button>
             <button className="btn-danger" onClick={async () => {
-              if (confirm('Apagar TODOS os dados? Isso não pode ser desfeito (a não ser que você tenha um backup).')) { await apagarTudo(); await garantirPadrao() }
+              if (confirm('Apagar TODOS os dados (lançamentos, categorias, contas e regras)? Isso não pode ser desfeito, a não ser que você tenha um backup.')) await apagarTudo()
             }}><AlertTriangle size={16} /> Apagar tudo</button>
           </div>
         </section>
@@ -96,6 +96,9 @@ function Categorias({ dados }: { dados: Dados }) {
         <h2 className="font-semibold">Categorias</h2>
         <button className="btn-outline !py-1" onClick={() => db.categorias.add({ id: uid(), nome: 'Nova categoria', emoji: '🏷️', cor: '#64748b' })}><Plus size={14} /> Nova</button>
       </div>
+      {dados.categorias.length === 0 && (
+        <p className="mb-3 text-sm text-slate-500">Nenhuma categoria ainda. Crie as suas em “Nova” ou <button className="text-accent underline" onClick={() => criarSugestoes()}>use as sugeridas</button> (Alimentação, Mercado, Transporte…).</p>
+      )}
       <div className="mb-1 grid grid-cols-[3rem_1fr_2.5rem_6.5rem_2rem] gap-2 text-xs text-slate-500"><span>Emoji</span><span>Nome</span><span>Cor</span><span>Limite/mês</span><span /></div>
       <ul className="space-y-2">
         {dados.categorias.map((c) => (
