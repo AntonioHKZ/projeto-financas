@@ -20,7 +20,7 @@ function BoasVindas() {
       <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         <button className="btn-primary" onClick={() => ir('personalizar')}><Settings size={16} /> Criar categorias e contas</button>
         <button className="btn-outline" onClick={() => criarSugestoes()}><Sparkles size={16} /> Usar categorias sugeridas</button>
-        <button className="btn-outline" onClick={() => ir('importar')}><Upload size={16} /> Importar do Nubank</button>
+        <button className="btn-outline" onClick={() => ir('importar')}><Upload size={16} /> Importar extrato do banco</button>
         <button className="btn-outline" onClick={() => confirm('Carregar dados fictícios para explorar o app? Depois é só usar "Apagar tudo" em Personalizar.') && carregarExemplo()}><FlaskConical size={16} /> Explorar com dados fictícios</button>
       </div>
     </div>

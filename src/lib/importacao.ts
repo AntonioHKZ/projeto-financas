@@ -1,7 +1,7 @@
 import { db } from './db'
 import { addMes, dataNoMes, normalizar, uid } from './format'
 import { recorrenteAtivo } from './mes'
-import type { TransacaoBruta, FonteImport } from './nubank'
+import type { TransacaoBruta, FonteImport } from './importadores'
 import type { Conta, Dados, Lancamento, Parcelado, Recorrente, Regra } from './types'
 
 export type Acao = 'avulso' | 'parcelado' | 'assinatura'
@@ -100,20 +100,33 @@ export function analisar(trans: TransacaoBruta[], dados: Dados): LinhaRevisao[] 
   })
 }
 
-export async function contaDestino(fonte: FonteImport, contas: Conta[]): Promise<string> {
+const COR_BANCO: Record<string, string> = {
+  'Nubank': '#820ad1', 'Inter': '#ff7a00', 'Itaú': '#ec7000', 'Bradesco': '#cc092f', 'Santander': '#ec0000',
+  'C6 Bank': '#242424', 'Banco do Brasil': '#f8d117', 'Caixa': '#005ca9', 'PicPay': '#21c25e', 'Mercado Pago': '#00b1ea',
+}
+
+/**
+ * Conta/cartão onde a importação vai cair: uma existente do mesmo banco e tipo; se o banco é conhecido
+ * e não existe, cria "<Banco> Cartão/Conta"; senão usa a primeira do tipo (o usuário pode trocar na revisão).
+ */
+export function contaDestino(fonte: FonteImport, contas: Conta[], banco?: string): { contaId: string } | { nova: Conta } {
   const tipo = fonte === 'cartao' ? 'cartao' : 'conta'
-  const achada = contas.find((c) => c.tipo === tipo && /nubank|nu\b/i.test(c.nome)) ?? contas.find((c) => c.tipo === tipo)
-  if (achada) return achada.id
-  const nova: Conta = { id: uid(), nome: fonte === 'cartao' ? 'Nubank Cartão' : 'Nubank Conta', tipo, cor: '#820ad1', diaVencimento: fonte === 'cartao' ? 10 : undefined }
-  await db.contas.add(nova)
-  return nova.id
+  const doTipo = contas.filter((c) => c.tipo === tipo)
+  if (banco) {
+    const achada = doTipo.find((c) => normalizar(c.nome).includes(normalizar(banco)))
+    if (achada) return { contaId: achada.id }
+  } else if (doTipo.length) return { contaId: doTipo[0].id }
+  const nome = banco ? `${banco} ${fonte === 'cartao' ? 'Cartão' : 'Conta'}` : fonte === 'cartao' ? 'Cartão de crédito' : 'Conta corrente'
+  // só é gravada quando o usuário confirma a importação
+  return { nova: { id: uid(), nome, tipo, cor: (banco && COR_BANCO[banco]) || '#64748b', diaVencimento: fonte === 'cartao' ? 10 : undefined } }
 }
 
 export interface ResumoImport { avulsos: number; parcelados: number; assinaturas: number; regras: number }
 
-export async function salvarImportacao(linhas: LinhaRevisao[], opts: { fonte: FonteImport; contaId: string; mesFatura?: string; dados: Dados }): Promise<ResumoImport> {
-  const { fonte, contaId, mesFatura, dados } = opts
-  const conta = dados.contas.find((c) => c.id === contaId)
+export async function salvarImportacao(linhas: LinhaRevisao[], opts: { fonte: FonteImport; contaId: string; contaNova?: Conta; mesFatura?: string; dados: Dados }): Promise<ResumoImport> {
+  const { fonte, contaId, contaNova, mesFatura, dados } = opts
+  if (contaNova && contaNova.id === contaId) await db.contas.add(contaNova)
+  const conta = contaNova?.id === contaId ? contaNova : dados.contas.find((c) => c.id === contaId)
   const venc = conta?.diaVencimento ?? 10
   const sel = linhas.filter((l) => l.incluir)
 

@@ -1,0 +1,10 @@
+Extrato Conta Corrente - dados fictícios
+Agência: 0001;Conta: 12345-6
+Data Lançamento;Histórico;Descrição;Valor;Saldo
+01/10/2026;Pix enviado;Imobiliária Exemplo;-1.800,00;4.700,00
+03/10/2026;Compra no débito;Padaria Pão Quente;-23,50;4.676,50
+05/10/2026;Pix recebido;Empresa Exemplo Ltda;6.500,00;11.176,50
+10/10/2026;Pagamento de fatura;Cartão de crédito;-1.200,00;9.976,50
+12/10/2026;Compra no débito;Supermercado Bom Preço;-245,80;9.730,70
+15/10/2026;Aplicação;CDB Liquidez Diária;-1.000,00;8.730,70
+20/10/2026;Pagamento de boleto;Energia Elétrica;-182,40;8.548,30

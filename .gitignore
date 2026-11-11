@@ -1,3 +1,19 @@
 node_modules
 dist
 *.local
+
+# Arquivos locais do assistente (não fazem parte do código)
+CLAUDE.md
+.claude/
+
+# Dados financeiros reais nunca vão para o repositório
+*.csv
+*.ofx
+*.qfx
+*.xls
+*.xlsx
+*.pdf
+financas-backup-*.json
+# ...exceto os exemplos fictícios
+!exemplos/*.csv
+!exemplos/*.ofx
