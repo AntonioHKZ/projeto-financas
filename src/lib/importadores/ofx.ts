@@ -1,5 +1,5 @@
 /** OFX: formato padrão aceito pela maioria dos bancos brasileiros (extrato e, em alguns, fatura). */
-import { arred, normalizar } from '../format'
+import { arred, normalizar, paraCentavos } from '../format'
 import type { FonteImport, ResultadoParse, TransacaoBruta } from './tipos'
 import { bancoPeloNome, contador, extrairParcela, hashTexto, limparDescConta, mesFaturaSugerido, motivoIgnorar, slug } from './util'
 
@@ -40,7 +40,7 @@ export function parseOFX(texto: string, nomeArquivo?: string): ResultadoParse {
     const { base, parcela } = extrairParcela(desc, cartao)
     const tipo = v < 0 ? 'despesa' : 'receita' // no OFX, gasto é sempre negativo (conta e cartão)
     transacoes.push({
-      fonte, data, descricao: desc, descBase: base, valor: arred(Math.abs(v)), tipo,
+      fonte, data, descricao: desc, descBase: base, valor: paraCentavos(Math.abs(v)), tipo,
       parcela: tipo === 'despesa' ? parcela : undefined,
       hash: `${prefixo}:` + (fitid || unico(`${data}|${arred(v)}|${hashTexto(normalizar(memo))}`)),
       ignorarPadrao: motivoIgnorar(memo, fonte, tipo),

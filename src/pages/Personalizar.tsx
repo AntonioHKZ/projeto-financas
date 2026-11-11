@@ -2,11 +2,17 @@ import { useRef, useState } from 'react'
 import { Moon, Sun, Plus, Trash2, Download, Upload, Sparkles, AlertTriangle } from 'lucide-react'
 import { Cabecalho } from '../components/Cabecalho'
 import { aplicarDestaque, aplicarTema, CORES_DESTAQUE, destaqueAtual, temaAtual } from '../app/tema'
-import { apagarTudo, criarSugestoes, db, exportarTudo, substituirTudo } from '../lib/db'
+import { apagarTudo, criarSugestoes, db, exportarTudo, migrarBackup, substituirTudo, VERSAO_BACKUP } from '../lib/db'
 import { carregarExemplo } from '../lib/exemplo'
-import { hojeISO, parseValorBR, uid } from '../lib/format'
+import { hojeISO, uid, type Centavos } from '../lib/format'
 import type { Categoria, Conta, Dados } from '../lib/types'
-import { SelectCategoria } from '../components/ui'
+import { InputMoeda, SelectCategoria } from '../components/ui'
+import { avisar, confirmar } from '../components/Dialogos'
+import { bancoDaConta } from '../lib/visao'
+
+const BANCOS_CONHECIDOS = ['Nubank', 'Inter', 'Itaú', 'Bradesco', 'Santander', 'Banco do Brasil', 'Caixa', 'C6 Bank', 'PicPay', 'Mercado Pago', 'BTG', 'XP', 'Sicredi', 'Sicoob', 'Neon', 'PagBank']
+
+const temDados = (d: Dados) => d.lancamentos.length + d.parcelados.length + d.recorrentes.length + d.categorias.length + d.contas.length > 0
 
 export default function Personalizar({ dados }: { dados: Dados }) {
   const [tema, setTema] = useState(temaAtual())
@@ -17,7 +23,7 @@ export default function Personalizar({ dados }: { dados: Dados }) {
   const trocarDestaque = (c: string) => { setDestaque(c); aplicarDestaque(c) }
 
   const exportar = async () => {
-    const blob = new Blob([JSON.stringify({ app: 'financas', versao: 1, ...(await exportarTudo()) }, null, 2)], { type: 'application/json' })
+    const blob = new Blob([JSON.stringify({ app: 'financas', versao: VERSAO_BACKUP, ...(await exportarTudo()) }, null, 2)], { type: 'application/json' })
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
     a.download = `financas-backup-${hojeISO()}.json`
@@ -30,18 +36,24 @@ export default function Personalizar({ dados }: { dados: Dados }) {
     try {
       const d = JSON.parse(await f.text())
       if (!Array.isArray(d.categorias) || !Array.isArray(d.lancamentos)) throw new Error()
-      if (!confirm('Importar este backup vai SUBSTITUIR todos os dados atuais. Continuar?')) return
-      await substituirTudo(d)
-      alert('Backup restaurado!')
+      const ok = await confirmar({
+        titulo: 'Restaurar este backup?',
+        mensagem: <>Todos os dados atuais serão <b>substituídos</b> pelos do arquivo <b>{f.name}</b>.</>,
+        acao: 'Restaurar', perigo: true,
+      })
+      if (ok) {
+        await substituirTudo(migrarBackup(d))
+        avisar('Backup restaurado.')
+      }
     } catch {
-      alert('Arquivo de backup inválido.')
+      avisar('Esse arquivo não é um backup válido do app.', 'erro')
     }
     if (arquivo.current) arquivo.current.value = ''
   }
 
   return (
     <div>
-      <Cabecalho titulo="Personalizar" comMes={false} />
+      <Cabecalho titulo="Personalizar" comMes={false} comVisao={false} />
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="card">
           <h2 className="mb-3 font-semibold">Aparência</h2>
@@ -66,9 +78,15 @@ export default function Personalizar({ dados }: { dados: Dados }) {
             <button className="btn-outline" onClick={exportar}><Download size={16} /> Exportar backup (JSON)</button>
             <button className="btn-outline" onClick={() => arquivo.current?.click()}><Upload size={16} /> Importar backup</button>
             <input ref={arquivo} type="file" accept=".json,application/json" hidden onChange={(e) => importar(e.target.files?.[0])} />
-            <button className="btn-outline" onClick={async () => confirm('Carregar dados de exemplo vai SUBSTITUIR os dados atuais. Continuar?') && (await carregarExemplo())}><Sparkles size={16} /> Carregar exemplo</button>
+            <button className="btn-outline" onClick={async () => {
+              if (await confirmar({ titulo: 'Carregar dados fictícios?', mensagem: 'Os dados atuais serão substituídos por um exemplo para explorar o app.', acao: 'Carregar exemplo', perigo: temDados(dados) })) {
+                await carregarExemplo(); avisar('Dados fictícios carregados.')
+              }
+            }}><Sparkles size={16} /> Carregar exemplo</button>
             <button className="btn-danger" onClick={async () => {
-              if (confirm('Apagar TODOS os dados (lançamentos, categorias, contas e regras)? Isso não pode ser desfeito, a não ser que você tenha um backup.')) await apagarTudo()
+              if (await confirmar({ titulo: 'Apagar todos os dados?', mensagem: 'Lançamentos, parcelados, assinaturas, categorias, contas e regras serão apagados. Não dá para desfazer, a não ser que você tenha um backup.', acao: 'Apagar tudo', perigo: true })) {
+                await apagarTudo(); avisar('Todos os dados foram apagados.')
+              }
             }}><AlertTriangle size={16} /> Apagar tudo</button>
           </div>
         </section>
@@ -85,7 +103,11 @@ function Categorias({ dados }: { dados: Dados }) {
   const salvar = (c: Categoria, mud: Partial<Categoria>) => db.categorias.update(c.id, mud)
   const excluir = async (c: Categoria) => {
     const uso = dados.lancamentos.filter((l) => l.categoriaId === c.id).length + dados.parcelados.filter((p) => p.categoriaId === c.id).length + dados.recorrentes.filter((r) => r.categoriaId === c.id).length
-    if (confirm(uso ? `"${c.nome}" está em ${uso} item(ns), que ficarão sem categoria. Excluir?` : `Excluir "${c.nome}"?`)) {
+    if (await confirmar({
+      titulo: `Excluir a categoria ${c.emoji} ${c.nome}?`,
+      mensagem: uso ? `Ela está em ${uso} ${uso === 1 ? 'item, que ficará' : 'itens, que ficarão'} sem categoria.` : undefined,
+      acao: 'Excluir', perigo: true,
+    })) {
       await db.categorias.delete(c.id)
       await db.regras.where('id').anyOf(dados.regras.filter((r) => r.categoriaId === c.id).map((r) => r.id)).delete()
     }
@@ -99,15 +121,14 @@ function Categorias({ dados }: { dados: Dados }) {
       {dados.categorias.length === 0 && (
         <p className="mb-3 text-sm text-slate-500">Nenhuma categoria ainda. Crie as suas em “Nova” ou <button className="text-accent underline" onClick={() => criarSugestoes()}>use as sugeridas</button> (Alimentação, Mercado, Transporte…).</p>
       )}
-      <div className="mb-1 grid grid-cols-[3rem_1fr_2.5rem_6.5rem_2rem] gap-2 text-xs text-slate-500"><span>Emoji</span><span>Nome</span><span>Cor</span><span>Limite/mês</span><span /></div>
+      <div className="mb-1 grid grid-cols-[3rem_1fr_2.5rem_7.5rem_2rem] gap-2 text-xs text-slate-500"><span>Emoji</span><span>Nome</span><span>Cor</span><span>Limite/mês</span><span /></div>
       <ul className="space-y-2">
         {dados.categorias.map((c) => (
-          <li key={c.id} className="grid grid-cols-[3rem_1fr_2.5rem_6.5rem_2rem] items-center gap-2">
+          <li key={c.id} className="grid grid-cols-[3rem_1fr_2.5rem_7.5rem_2rem] items-center gap-2">
             <input className="input !px-1 text-center" defaultValue={c.emoji} onBlur={(e) => salvar(c, { emoji: e.target.value || '🏷️' })} />
             <input className="input" defaultValue={c.nome} onBlur={(e) => e.target.value.trim() && salvar(c, { nome: e.target.value.trim() })} />
             <input type="color" className="h-9 w-full cursor-pointer rounded bg-transparent" defaultValue={c.cor} onBlur={(e) => salvar(c, { cor: e.target.value })} />
-            <input className="input" inputMode="decimal" placeholder="—" defaultValue={c.limite ? String(c.limite).replace('.', ',') : ''}
-              onBlur={(e) => { const v = parseValorBR(e.target.value); salvar(c, { limite: v > 0 ? v : undefined }) }} />
+            <CampoLimite valor={c.limite} salvar={(limite) => salvar(c, { limite })} />
             <button className="btn-ghost !p-1.5 hover:!text-rose-500" onClick={() => excluir(c)}><Trash2 size={15} /></button>
           </li>
         ))}
@@ -119,23 +140,27 @@ function Categorias({ dados }: { dados: Dados }) {
 function Contas({ dados }: { dados: Dados }) {
   const salvar = (c: Conta, mud: Partial<Conta>) => db.contas.update(c.id, mud)
   return (
-    <section className="card">
-      <div className="mb-3 flex items-center justify-between">
+    <section className="card lg:col-span-2">
+      <div className="mb-1 flex items-center justify-between">
         <h2 className="font-semibold">Contas e cartões</h2>
         <button className="btn-outline !py-1" onClick={() => db.contas.add({ id: uid(), nome: 'Novo cartão', tipo: 'cartao', cor: '#0ea5e9', diaVencimento: 10 })}><Plus size={14} /> Nova</button>
       </div>
-      <div className="mb-1 grid grid-cols-[1fr_6.5rem_2.5rem_4rem_2rem] gap-2 text-xs text-slate-500"><span>Nome</span><span>Tipo</span><span>Cor</span><span>Venc.</span><span /></div>
+      <p className="mb-3 text-sm text-slate-500">O <b>banco</b> agrupa as contas na visão por banco (seletor no topo do Painel e do Extrato). Contas importadas já vêm com o banco preenchido.</p>
+      <datalist id="bancos-conhecidos">{BANCOS_CONHECIDOS.map((b) => <option key={b} value={b} />)}</datalist>
+      <div className="mb-1 grid grid-cols-[1fr_8rem_6.5rem_2.5rem_4rem_2rem] gap-2 text-xs text-slate-500"><span>Nome</span><span>Banco</span><span>Tipo</span><span>Cor</span><span>Venc.</span><span /></div>
       <ul className="space-y-2">
         {dados.contas.map((c) => (
-          <li key={c.id} className="grid grid-cols-[1fr_6.5rem_2.5rem_4rem_2rem] items-center gap-2">
+          <li key={c.id} className="grid grid-cols-[1fr_8rem_6.5rem_2.5rem_4rem_2rem] items-center gap-2">
             <input className="input" defaultValue={c.nome} onBlur={(e) => e.target.value.trim() && salvar(c, { nome: e.target.value.trim() })} />
+            <input className="input" list="bancos-conhecidos" placeholder={bancoDaConta({ ...c, banco: undefined }) ?? '—'} defaultValue={c.banco ?? ''}
+              onBlur={(e) => e.target.value.trim() !== (c.banco ?? '') && salvar(c, { banco: e.target.value.trim() || undefined })} />
             <select className="input" value={c.tipo} onChange={(e) => salvar(c, { tipo: e.target.value as Conta['tipo'] })}>
               <option value="cartao">Cartão</option><option value="conta">Conta</option><option value="dinheiro">Dinheiro</option>
             </select>
             <input type="color" className="h-9 w-full cursor-pointer rounded bg-transparent" defaultValue={c.cor} onBlur={(e) => salvar(c, { cor: e.target.value })} />
             <input type="number" min={1} max={31} className="input" placeholder="—" defaultValue={c.diaVencimento ?? ''}
               onBlur={(e) => salvar(c, { diaVencimento: Number(e.target.value) || undefined })} />
-            <button className="btn-ghost !p-1.5 hover:!text-rose-500" onClick={() => confirm(`Excluir "${c.nome}"? Os itens dela ficam "sem conta".`) && db.contas.delete(c.id)}><Trash2 size={15} /></button>
+            <button className="btn-ghost !p-1.5 hover:!text-rose-500" onClick={async () => (await confirmar({ titulo: `Excluir ${c.nome}?`, mensagem: 'Os itens desta conta continuam no app, mas ficam sem conta.', acao: 'Excluir', perigo: true })) && db.contas.delete(c.id)}><Trash2 size={15} /></button>
           </li>
         ))}
       </ul>
@@ -175,4 +200,10 @@ function Regras({ dados }: { dados: Dados }) {
       )}
     </section>
   )
+}
+
+/** Limite mensal da categoria: edita localmente e grava ao sair do campo (vazio = sem limite). */
+function CampoLimite({ valor, salvar }: { valor?: Centavos; salvar: (v?: Centavos) => void }) {
+  const [v, setV] = useState(valor ?? 0)
+  return <InputMoeda valor={v} onChange={setV} vazioQuandoZero placeholder="—" onBlur={() => v !== (valor ?? 0) && salvar(v > 0 ? v : undefined)} />
 }

@@ -93,10 +93,3 @@ exemplos/         Arquivos fictícios para testar a importação
 ```
 
 Para reconhecer automaticamente o CSV de mais um banco, crie um leitor em `src/lib/importadores/` (veja `nubank.ts`) e registre em `FORMATOS_CSV`, no `index.ts`.
-
-## Próximos passos
-
-- [ ] Instalar no celular (PWA)
-- [ ] Metas de economia
-- [ ] Reconhecer automaticamente o CSV de mais bancos
-- [ ] Sincronização entre dispositivos (opcional)

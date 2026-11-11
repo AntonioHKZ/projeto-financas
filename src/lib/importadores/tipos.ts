@@ -6,7 +6,7 @@ export interface TransacaoBruta {
   data: string // YYYY-MM-DD da transação
   descricao: string // texto original (levemente limpo)
   descBase: string // sem "Parcela X/Y", usado para agrupar e categorizar
-  valor: number // sempre positivo
+  valor: number // em centavos, sempre positivo
   tipo: 'despesa' | 'receita'
   hash: string // identificador estável para evitar duplicatas
   parcela?: { n: number; total: number }

@@ -2,7 +2,7 @@
  * CSV de qualquer banco: detecta as colunas pelo cabeçalho (ou pelo conteúdo) e
  * deixa o usuário confirmar/ajustar antes de importar.
  */
-import { arred, normalizar } from '../format'
+import { arred, normalizar, paraCentavos } from '../format'
 import type { FonteImport, Mapeamento, ResultadoParse, TransacaoBruta } from './tipos'
 import { contador, extrairParcela, hashTexto, limparDescConta, mesFaturaSugerido, motivoIgnorar, parseData, slug, valorNum } from './util'
 
@@ -89,7 +89,7 @@ export function parseComMapeamento(linhas: string[][], map: Mapeamento, nomeArqu
     const { base, parcela } = extrairParcela(desc, map.fonte === 'cartao')
     const tipo = v < 0 ? 'despesa' : 'receita'
     transacoes.push({
-      fonte: map.fonte, data, descricao: desc, descBase: base, valor: arred(Math.abs(v)), tipo,
+      fonte: map.fonte, data, descricao: desc, descBase: base, valor: paraCentavos(Math.abs(v)), tipo,
       parcela: tipo === 'despesa' ? parcela : undefined,
       hash: `${prefixo}:` + unico(`${data}|${arred(v)}|${hashTexto(normalizar(bruto))}`),
       ignorarPadrao: motivoIgnorar(bruto, map.fonte, tipo),

@@ -4,7 +4,9 @@ import { Cabecalho } from '../components/Cabecalho'
 import { BadgeCategoria, Vazio } from '../components/ui'
 import { diffMes, mesDe, moeda, nomeMes } from '../lib/format'
 import { custoMensal } from '../lib/mes'
+import { rotuloDiaUtil } from '../lib/diasUteis'
 import { db } from '../lib/db'
+import { avisar, confirmar } from '../components/Dialogos'
 import type { Dados, Recorrente, TipoRecorrente } from '../lib/types'
 
 const SECOES: { tipo: TipoRecorrente; titulo: string; emoji: string }[] = [
@@ -18,8 +20,15 @@ export default function Assinaturas({ dados }: { dados: Dados }) {
   const hoje = mesDe()
   const ativa = (r: Recorrente) => !r.fim || diffMes(hoje, r.fim) >= 0
 
-  const cancelar = (r: Recorrente) => db.recorrentes.update(r.id, { fim: hoje })
-  const reativar = (r: Recorrente) => db.recorrentes.update(r.id, { fim: undefined })
+  const cancelar = async (r: Recorrente) => {
+    if (!(await confirmar({ titulo: `Cancelar ${r.descricao}?`, mensagem: `A última cobrança fica em ${nomeMes(hoje).toLowerCase()}. O histórico é mantido e dá para reativar depois.`, acao: 'Cancelar assinatura', cancelar: 'Voltar' }))) return
+    await db.recorrentes.update(r.id, { fim: hoje })
+    avisar(`${r.descricao} cancelada.`)
+  }
+  const reativar = async (r: Recorrente) => {
+    await db.recorrentes.update(r.id, { fim: undefined })
+    avisar(`${r.descricao} reativada.`)
+  }
 
   return (
     <div>
@@ -49,20 +58,20 @@ export default function Assinaturas({ dados }: { dados: Dados }) {
                           <div className="font-medium">{r.descricao} {!on && <span className="ml-1 rounded bg-slate-500/15 px-1.5 text-xs">cancelada em {nomeMes(r.fim!, true)}</span>}</div>
                           <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-slate-500">
                             <BadgeCategoria cat={dados.categorias.find((c) => c.id === r.categoriaId)} />
-                            <span>dia {r.dia} · {r.frequencia === 'anual' ? `anual (${nomeMes(r.inicio).split(' ')[0].toLowerCase()})` : 'mensal'}</span>
+                            <span>{r.diaUtil ? `até o ${rotuloDiaUtil(r.dia)}` : `dia ${r.dia}`} · {r.frequencia === 'anual' ? `anual (${nomeMes(r.inicio).split(' ')[0].toLowerCase()})` : 'mensal'}</span>
                             <span>{dados.contas.find((c) => c.id === r.contaId)?.nome}</span>
                           </div>
                         </div>
                         <div className="text-right">
                           <div className={`font-semibold ${s.tipo === 'receita' ? 'text-emerald-600' : ''}`}>{moeda(r.valor)}</div>
-                          <div className="text-xs text-slate-500">{r.frequencia === 'anual' ? `${moeda(r.valor / 12)}/mês` : `${moeda(r.valor * 12)}/ano`}</div>
+                          <div className="text-xs text-slate-500">{r.frequencia === 'anual' ? `${moeda(Math.round(r.valor / 12))}/mês` : `${moeda(r.valor * 12)}/ano`}</div>
                         </div>
                         <div className="flex">
                           {on
                             ? <button className="btn-ghost !p-1.5" title="Cancelar (para de cobrar a partir do mês que vem)" onClick={() => cancelar(r)}><Ban size={15} /></button>
                             : <button className="btn-ghost !p-1.5" title="Reativar" onClick={() => reativar(r)}><RotateCcw size={15} /></button>}
                           <button className="btn-ghost !p-1.5" title="Editar" onClick={() => editar({ tipo: 'recorrente', item: r })}><Pencil size={15} /></button>
-                          <button className="btn-ghost !p-1.5 hover:!text-rose-500" title="Excluir de todos os meses" onClick={() => confirm(`Excluir "${r.descricao}" de todos os meses?`) && db.recorrentes.delete(r.id)}><Trash2 size={15} /></button>
+                          <button className="btn-ghost !p-1.5 hover:!text-rose-500" title="Excluir de todos os meses" onClick={async () => (await confirmar({ titulo: `Excluir ${r.descricao}?`, mensagem: 'Some de todos os meses, inclusive dos passados. Para só parar de cobrar daqui pra frente, use “Cancelar”.', acao: 'Excluir', perigo: true })) && db.recorrentes.delete(r.id)}><Trash2 size={15} /></button>
                         </div>
                       </li>
                     )

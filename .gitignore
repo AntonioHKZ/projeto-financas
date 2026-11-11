@@ -17,3 +17,7 @@ financas-backup-*.json
 # ...exceto os exemplos fictícios
 !exemplos/*.csv
 !exemplos/*.ofx
+
+# Trava temporária do LibreOffice/Excel quando uma planilha está aberta
+.~lock.*
+~$*

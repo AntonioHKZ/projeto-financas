@@ -1,7 +1,22 @@
 import type { Mes } from './types'
 
 const brl = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
-export const moeda = (v: number) => brl.format(v)
+
+/**
+ * Dinheiro é guardado sempre em CENTAVOS (número inteiro) para evitar erros de arredondamento
+ * (0,1 + 0,2 ≠ 0,3 em ponto flutuante). Só na hora de mostrar é que vira "R$ 1.234,56".
+ */
+export type Centavos = number
+
+/** 123456 → "R$ 1.234,56" */
+export const moeda = (c: Centavos) => brl.format(c / 100)
+
+/** 1234.56 (reais) → 123456 (centavos) */
+export const paraCentavos = (reais: number): Centavos => Math.round(reais * 100)
+
+/** 123456 → "1.234,56" (sem o "R$"), usado nos campos de valor */
+export const formatarCentavos = (c: Centavos) =>
+  (c / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 export const uid = () =>
   typeof crypto !== 'undefined' && 'randomUUID' in crypto
@@ -64,12 +79,6 @@ export function normalizar(s: string): string {
     .toLowerCase()
     .replace(/\s+/g, ' ')
     .trim()
-}
-
-export function parseValorBR(s: string): number {
-  const limpo = s.replace(/[^\d,.-]/g, '')
-  if (limpo.includes(',')) return Number(limpo.replace(/\./g, '').replace(',', '.'))
-  return Number(limpo)
 }
 
 export const arred = (v: number) => Math.round(v * 100) / 100

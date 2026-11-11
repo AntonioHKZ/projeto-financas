@@ -76,7 +76,7 @@ export default function Importar({ dados }: { dados: Dados }) {
 
   return (
     <div>
-      <Cabecalho titulo="Importar extrato ou fatura" comMes={false} />
+      <Cabecalho titulo="Importar extrato ou fatura" comMes={false} comVisao={false} />
 
       {feito && (
         <div className="card mb-4 flex flex-wrap items-center gap-3 border-emerald-500/40 bg-emerald-500/5">

@@ -6,6 +6,7 @@ import { Barra, BadgeCategoria, Vazio } from '../components/ui'
 import { addMes, diffMes, mesDe, moeda, nomeMes } from '../lib/format'
 import { isPagoMapa, ultimoMes } from '../lib/mes'
 import { db } from '../lib/db'
+import { confirmar } from '../components/Dialogos'
 import type { Dados, Parcelado } from '../lib/types'
 
 function info(p: Parcelado) {
@@ -51,7 +52,7 @@ export default function Parcelados({ dados }: { dados: Dados }) {
         </div>
         <div className="flex shrink-0">
           <button className="btn-ghost !p-1.5" onClick={() => editar({ tipo: 'parcelado', item: x.p })}><Pencil size={15} /></button>
-          <button className="btn-ghost !p-1.5 hover:!text-rose-500" onClick={() => confirm(`Excluir "${x.p.descricao}"?`) && db.parcelados.delete(x.p.id)}><Trash2 size={15} /></button>
+          <button className="btn-ghost !p-1.5 hover:!text-rose-500" onClick={async () => (await confirmar({ titulo: `Excluir ${x.p.descricao}?`, mensagem: `Todas as ${x.p.parcelas} parcelas saem do app.`, acao: 'Excluir', perigo: true })) && db.parcelados.delete(x.p.id)}><Trash2 size={15} /></button>
         </div>
       </div>
       <div className="mt-3 mb-1 flex justify-between text-sm">

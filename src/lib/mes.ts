@@ -1,5 +1,6 @@
 import type { Dados, ItemMes, Mes, Parcelado, Recorrente } from './types'
 import { addMes, dataNoMes, diffMes, mesDe } from './format'
+import { enesimoDiaUtil, rotuloDiaUtil } from './diasUteis'
 
 /** Meses passados contam como pagos por padrão. */
 export function pagoPadrao(m: Mes, hoje: Mes = mesDe()): boolean {
@@ -22,8 +23,13 @@ export function recorrenteAtivo(r: Recorrente, m: Mes): boolean {
   return true
 }
 
+/** Data em que o recorrente cai no mês: dia fixo ou N-ésimo dia útil. */
+export function dataDoRecorrente(r: Recorrente, m: Mes): string {
+  return r.diaUtil ? enesimoDiaUtil(m, r.dia, r.sabadoUtil ?? true) : dataNoMes(m, r.dia)
+}
+
 export function custoMensal(r: Recorrente): number {
-  return r.frequencia === 'anual' ? r.valor / 12 : r.valor
+  return r.frequencia === 'anual' ? Math.round(r.valor / 12) : r.valor
 }
 
 export function isPagoMapa(mapa: Record<Mes, boolean>, m: Mes): boolean {
@@ -80,7 +86,8 @@ export function gerarMes(m: Mes, d: Pick<Dados, 'lancamentos' | 'parcelados' | '
       tipo: r.tipo === 'receita' ? 'receita' : 'despesa',
       descricao: r.descricao,
       valor: r.valor,
-      data: dataNoMes(m, r.dia),
+      data: dataDoRecorrente(r, m),
+      previsao: r.diaUtil ? `até o ${rotuloDiaUtil(r.dia)}` : undefined,
       categoriaId: r.categoriaId,
       contaId: r.contaId,
       pago: isPagoMapa(r.pagos, m),

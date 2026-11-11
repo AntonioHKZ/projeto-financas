@@ -6,6 +6,7 @@ import { BadgeCategoria, SelectCategoria, SelectConta, Vazio } from '../componen
 import { gerarMes, resumo } from '../lib/mes'
 import { dataBR, moeda, normalizar } from '../lib/format'
 import { alternarPago, excluirItem } from '../lib/acoes'
+import { confirmar } from '../components/Dialogos'
 import type { Dados, ItemMes } from '../lib/types'
 
 export default function Extrato({ dados }: { dados: Dados }) {
@@ -49,10 +50,10 @@ export default function Extrato({ dados }: { dados: Dados }) {
   }
 
   const excluir = async (i: ItemMes) => {
-    const msg = i.origem === 'avulso' ? `Excluir "${i.descricao}"?`
-      : i.origem === 'parcela' ? `Isto exclui a compra parcelada "${i.descricao}" inteira (todas as parcelas). Continuar?`
-      : `Isto exclui "${i.descricao}" de todos os meses. Para só parar a cobrança, use "Cancelar" em Assinaturas. Continuar?`
-    if (confirm(msg)) await excluirItem(i)
+    const mensagem = i.origem === 'avulso' ? `${moeda(i.valor)} em ${dataBR(i.data)}.`
+      : i.origem === 'parcela' ? 'É uma compra parcelada: todas as parcelas serão excluídas, não só a deste mês.'
+      : 'É um item recorrente: ele some de todos os meses. Para só parar de cobrar daqui pra frente, use “Cancelar” em Assinaturas.'
+    if (await confirmar({ titulo: `Excluir ${i.descricao}?`, mensagem, acao: 'Excluir', perigo: true })) await excluirItem(i)
   }
 
   return (
@@ -109,7 +110,7 @@ export default function Extrato({ dados }: { dados: Dados }) {
                           {i.parcelaInfo && <span className="ml-1.5 rounded bg-amber-500/15 px-1.5 text-xs text-amber-600">{i.parcelaInfo}</span>}
                           {i.recorrenteTipo && <span className="ml-1.5 rounded bg-indigo-500/15 px-1.5 text-xs text-indigo-500">{i.recorrenteTipo === 'assinatura' ? 'assinatura' : i.recorrenteTipo === 'fixa' ? 'fixa' : 'receita fixa'}</span>}
                         </div>
-                        <div className="mt-0.5 flex items-center gap-2"><BadgeCategoria cat={dados.categorias.find((c) => c.id === i.categoriaId)} />{i.dataOriginal && <span className="text-xs text-slate-400">compra em {dataBR(i.dataOriginal)}</span>}</div>
+                        <div className="mt-0.5 flex items-center gap-2"><BadgeCategoria cat={dados.categorias.find((c) => c.id === i.categoriaId)} />{i.dataOriginal && <span className="text-xs text-slate-400">compra em {dataBR(i.dataOriginal)}</span>}{i.previsao && <span className="text-xs text-slate-400">{i.previsao}</span>}</div>
                       </div>
                       <span className={`shrink-0 font-semibold ${i.tipo === 'receita' ? 'text-emerald-600' : ''}`}>{i.tipo === 'receita' ? '+' : ''}{moeda(i.valor)}</span>
                       <div className="flex shrink-0 sm:opacity-0 sm:group-hover:opacity-100">

@@ -3,7 +3,9 @@ import { LayoutDashboard, ReceiptText, CreditCard, Repeat, Upload, Settings, Plu
 import { AppCtx, type Edicao, type FiltrosExtrato, type Pagina } from './contexto'
 import { mesDe } from '../lib/format'
 import { useDados } from '../lib/useDados'
+import { filtrarPorVisao, opcoesDeVisao, TODOS } from '../lib/visao'
 import { ModalEdicao } from '../components/Formularios'
+import { Dialogos } from '../components/Dialogos'
 import Painel from '../pages/Painel'
 import Extrato from '../pages/Extrato'
 import Parcelados from '../pages/Parcelados'
@@ -32,6 +34,15 @@ export default function App() {
   const [edicao, setEdicao] = useState<Edicao | null>(null)
   const [chaveEdicao, setChaveEdicao] = useState(0)
   const dados = useDados()
+  const [visaoSalva, setVisaoSalva] = useState(() => { try { return localStorage.getItem('visao') ?? TODOS } catch { return TODOS } })
+  const opcoesVisao = useMemo(() => opcoesDeVisao(dados.contas), [dados.contas])
+  // se o banco escolhido deixou de existir (contas apagadas), volta para "todos"
+  const visao = visaoSalva === TODOS || opcoesVisao.some((o) => o.id === visaoSalva) ? visaoSalva : TODOS
+  const setVisao = useCallback((v: string) => {
+    setVisaoSalva(v)
+    try { localStorage.setItem('visao', v) } catch { /* sem armazenamento */ }
+  }, [])
+  const dadosVisao = useMemo(() => filtrarPorVisao(dados, visao), [dados, visao])
 
   useEffect(() => {
     const f = () => setPagina(paginaDoHash())
@@ -51,7 +62,7 @@ export default function App() {
     setEdicao(e)
   }, [])
 
-  const ctx = useMemo(() => ({ mes, setMes, ir, filtrosIniciais: filtros, editar }), [mes, ir, filtros, editar])
+  const ctx = useMemo(() => ({ mes, setMes, ir, filtrosIniciais: filtros, editar, visao, setVisao, opcoesVisao }), [mes, ir, filtros, editar, visao, setVisao, opcoesVisao])
 
   return (
     <AppCtx.Provider value={ctx}>
@@ -72,10 +83,10 @@ export default function App() {
         <main className="min-w-0 flex-1 px-4 pb-28 pt-4 md:px-8 md:pb-10 md:pt-6">
           {!dados.carregado ? <p className="text-slate-500">Carregando…</p> : (
             <>
-              {pagina === 'painel' && <Painel dados={dados} />}
-              {pagina === 'extrato' && <Extrato dados={dados} />}
-              {pagina === 'parcelados' && <Parcelados dados={dados} />}
-              {pagina === 'assinaturas' && <Assinaturas dados={dados} />}
+              {pagina === 'painel' && <Painel dados={dadosVisao} />}
+              {pagina === 'extrato' && <Extrato dados={dadosVisao} />}
+              {pagina === 'parcelados' && <Parcelados dados={dadosVisao} />}
+              {pagina === 'assinaturas' && <Assinaturas dados={dadosVisao} />}
               {pagina === 'importar' && <Importar dados={dados} />}
               {pagina === 'personalizar' && <Personalizar dados={dados} />}
             </>
@@ -96,6 +107,7 @@ export default function App() {
         </button>
       </div>
       <ModalEdicao key={chaveEdicao} edicao={edicao} fechar={() => setEdicao(null)} dados={dados} />
+      <Dialogos />
     </AppCtx.Provider>
   )
 }

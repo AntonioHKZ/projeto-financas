@@ -3,6 +3,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, ComposedChart, Bar, 
 import { ArrowDownCircle, ArrowUpCircle, Wallet, Clock, Check, Settings, Sparkles, Upload, FlaskConical } from 'lucide-react'
 import { criarSugestoes } from '../lib/db'
 import { carregarExemplo } from '../lib/exemplo'
+import { confirmar } from '../components/Dialogos'
 import { useApp } from '../app/contexto'
 import { Cabecalho } from '../components/Cabecalho'
 import { Barra, Vazio } from '../components/ui'
@@ -21,7 +22,7 @@ function BoasVindas() {
         <button className="btn-primary" onClick={() => ir('personalizar')}><Settings size={16} /> Criar categorias e contas</button>
         <button className="btn-outline" onClick={() => criarSugestoes()}><Sparkles size={16} /> Usar categorias sugeridas</button>
         <button className="btn-outline" onClick={() => ir('importar')}><Upload size={16} /> Importar extrato do banco</button>
-        <button className="btn-outline" onClick={() => confirm('Carregar dados fictícios para explorar o app? Depois é só usar "Apagar tudo" em Personalizar.') && carregarExemplo()}><FlaskConical size={16} /> Explorar com dados fictícios</button>
+        <button className="btn-outline" onClick={async () => (await confirmar({ titulo: 'Explorar com dados fictícios?', mensagem: 'Vamos preencher o app com um exemplo. Quando quiser começar de verdade, use “Apagar tudo” em Personalizar.', acao: 'Carregar exemplo' })) && carregarExemplo()}><FlaskConical size={16} /> Explorar com dados fictícios</button>
       </div>
     </div>
   )
@@ -123,7 +124,7 @@ export default function Painel({ dados }: { dados: Dados }) {
                 onClick={(e: any) => { const i = Number(e?.activeTooltipIndex ?? e?.activeIndex); if (projecao[i]) { setMes(projecao[i].mes); ir('extrato') } }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#94a3b833" />
                 <XAxis dataKey="rotulo" fontSize={11} tickLine={false} />
-                <YAxis fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : String(v))} allowDecimals={false} width={32} />
+                <YAxis fontSize={11} tickLine={false} axisLine={false} tickFormatter={(c) => (c >= 100000 ? `${Math.round(c / 100000)}k` : String(Math.round(c / 100)))} allowDecimals={false} width={32} />
                 <Tooltip formatter={(v) => moeda(Number(v))} />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
                 <Bar dataKey="parcelas" name="Parcelas" stackId="d" fill={COR_GRUPO.parcelas} />

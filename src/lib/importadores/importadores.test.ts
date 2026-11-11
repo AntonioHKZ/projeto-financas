@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { lerArquivo, parseComMapeamento, decodificar, type Leitura } from './index'
 import { extrairParcela, limparDescConta, parseData, valorNum } from './util'
 import { gerarMes } from '../mes'
+import { formatarCentavos, moeda, paraCentavos } from '../format'
 import type { Parcelado } from '../types'
 
 const pronto = (l: Leitura) => {
@@ -70,7 +71,7 @@ describe('Nubank (reconhecido automaticamente)', () => {
   })
   it('extrato CSV', () => {
     const r = pronto(lerArquivo(EXTRATO_NU))
-    expect(r.transacoes[0]).toMatchObject({ data: '2026-10-01', valor: 35, tipo: 'despesa', descricao: 'PADARIA BOA', hash: 'nu-conta:abc-1' })
+    expect(r.transacoes[0]).toMatchObject({ data: '2026-10-01', valor: 3500, tipo: 'despesa', descricao: 'PADARIA BOA', hash: 'nu-conta:abc-1' })
     expect(r.transacoes[1]).toMatchObject({ tipo: 'receita', descricao: 'Pix recebido - EMPRESA LTDA' })
     expect(r.transacoes[2].ignorarPadrao).toMatch(/fatura/)
   })
@@ -80,13 +81,13 @@ describe('OFX de qualquer banco', () => {
   it('identifica o banco pelo código e lê conta', () => {
     const r = pronto(lerArquivo(OFX_ITAU))
     expect(r).toMatchObject({ banco: 'Itaú', fonte: 'conta' })
-    expect(r.transacoes[0]).toMatchObject({ valor: 99.9, tipo: 'despesa', hash: 'itau-conta:a1' })
+    expect(r.transacoes[0]).toMatchObject({ valor: 9990, tipo: 'despesa', hash: 'itau-conta:a1' })
     expect(r.transacoes[1].tipo).toBe('receita')
   })
   it('lê fatura de cartão em OFX', () => {
     const r = pronto(lerArquivo(OFX_CARTAO))
     expect(r.fonte).toBe('cartao')
-    expect(r.transacoes[0]).toMatchObject({ valor: 99.9, tipo: 'despesa', parcela: { n: 2, total: 4 } })
+    expect(r.transacoes[0]).toMatchObject({ valor: 9990, tipo: 'despesa', parcela: { n: 2, total: 4 } })
     expect(r.transacoes[1].ignorarPadrao).toBeTruthy()
   })
 })
@@ -100,15 +101,15 @@ describe('CSV genérico', () => {
     expect(l.sugestao).toMatchObject({ linhaCabecalho: 2, colData: 0, colValor: 3, fonte: 'conta' })
     const r = parseComMapeamento(l.linhas, l.sugestao, l.nomeArquivo, l.banco)
     expect(r.transacoes).toHaveLength(3)
-    expect(r.transacoes[0]).toMatchObject({ valor: 1250, tipo: 'despesa' })
-    expect(r.transacoes[2]).toMatchObject({ valor: 4500, tipo: 'receita' })
+    expect(r.transacoes[0]).toMatchObject({ valor: 125000, tipo: 'despesa' })
+    expect(r.transacoes[2]).toMatchObject({ valor: 450000, tipo: 'receita' })
   })
   it('fatura de cartão: positivo = gasto, parcela curta "02/05", pagamento ignorado', () => {
     const l = lerArquivo(CSV_CARTAO_GENERICO, 'fatura_itau.csv')
     if (l.tipo !== 'mapear') throw new Error()
     expect(l.sugestao.fonte).toBe('cartao')
     const r = parseComMapeamento(l.linhas, l.sugestao, l.nomeArquivo, l.banco)
-    expect(r.transacoes[0]).toMatchObject({ descricao: 'NETFLIX', valor: 44.9, tipo: 'despesa' })
+    expect(r.transacoes[0]).toMatchObject({ descricao: 'NETFLIX', valor: 4490, tipo: 'despesa' })
     expect(r.transacoes[1]).toMatchObject({ descBase: 'LOJA ABC', parcela: { n: 2, total: 5 } })
     expect(r.transacoes[2].ignorarPadrao).toMatch(/fatura/)
   })
@@ -117,7 +118,7 @@ describe('CSV genérico', () => {
     if (l.tipo !== 'mapear') throw new Error()
     expect(l.sugestao.colValor).toBe(-1)
     const r = parseComMapeamento(l.linhas, l.sugestao)
-    expect(r.transacoes.map((t) => [t.tipo, t.valor])).toEqual([['receita', 5000], ['despesa', 1800]])
+    expect(r.transacoes.map((t) => [t.tipo, t.valor])).toEqual([['receita', 500000], ['despesa', 180000]])
   })
   it('rejeita arquivo sem colunas reconhecíveis', () => {
     expect(() => lerArquivo('a;b\nx;y\nz;w')).toThrow()
@@ -148,9 +149,19 @@ describe('utilidades', () => {
     expect(decodificar(bytes.buffer)).toBe('Histórico')
   })
   it('gerarMes coloca a parcela certa no mês', () => {
-    const p: Parcelado = { id: '1', descricao: 'TV', valorParcela: 100, parcelas: 3, primeiroMes: '2026-10', pagos: {} }
+    const p: Parcelado = { id: '1', descricao: 'TV', valorParcela: 10000, parcelas: 3, primeiroMes: '2026-10', pagos: {} }
     const d = { lancamentos: [], parcelados: [p], recorrentes: [], contas: [] }
     expect(gerarMes('2026-11', d)[0].parcelaInfo).toBe('2/3')
     expect(gerarMes('2027-01', d)).toHaveLength(0)
+  })
+})
+
+describe('dinheiro em centavos', () => {
+  it('converte e formata sem erro de arredondamento', () => {
+    expect(paraCentavos(0.1) + paraCentavos(0.2)).toBe(30)
+    expect(paraCentavos(19.99)).toBe(1999)
+    expect(paraCentavos(1234.565)).toBe(123457)
+    expect(moeda(123456).replace(/\s/g, ' ')).toBe('R$ 1.234,56')
+    expect(formatarCentavos(5)).toBe('0,05')
   })
 })

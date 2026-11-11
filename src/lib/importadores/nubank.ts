@@ -1,5 +1,5 @@
 /** Formatos CSV conhecidos do Nubank (reconhecidos automaticamente pelo cabeçalho). */
-import { arred, normalizar } from '../format'
+import { arred, normalizar, paraCentavos } from '../format'
 import type { ResultadoParse, TransacaoBruta } from './tipos'
 import { contador, extrairParcela, hashTexto, limparDescConta, mesFaturaSugerido, motivoIgnorar, valorNum } from './util'
 
@@ -25,7 +25,7 @@ export function parseFaturaNubank(linhas: string[][], nomeArquivo?: string): Res
     const { base, parcela } = extrairParcela(titulo)
     const tipo = v < 0 ? 'receita' : 'despesa'
     transacoes.push({
-      fonte: 'cartao', data, descricao: titulo, descBase: base, valor: arred(Math.abs(v)), tipo,
+      fonte: 'cartao', data, descricao: titulo, descBase: base, valor: paraCentavos(Math.abs(v)), tipo,
       parcela: tipo === 'despesa' ? parcela : undefined,
       hash: 'nu-cartao:' + unico(`${data}|${arred(v)}|${hashTexto(normalizar(titulo))}`),
       ignorarPadrao: motivoIgnorar(titulo, 'cartao', tipo),
@@ -52,7 +52,7 @@ export function parseExtratoNubank(linhas: string[][]): ResultadoParse {
     const { base, parcela } = extrairParcela(limpo)
     const tipo = v < 0 ? 'despesa' : 'receita'
     transacoes.push({
-      fonte: 'conta', data, descricao: limpo, descBase: base, valor: arred(Math.abs(v)), tipo,
+      fonte: 'conta', data, descricao: limpo, descBase: base, valor: paraCentavos(Math.abs(v)), tipo,
       parcela: tipo === 'despesa' ? parcela : undefined,
       hash: 'nu-conta:' + (id || unico(`${data}|${arred(v)}|${hashTexto(normalizar(desc))}`)),
       ignorarPadrao: motivoIgnorar(desc, 'conta', tipo),

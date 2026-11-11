@@ -1,7 +1,8 @@
 import { useEffect, type ReactNode } from 'react'
 import { X, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { Categoria, Conta, Mes } from '../lib/types'
-import { addMes, mesDe, nomeMes } from '../lib/format'
+import { addMes, formatarCentavos, mesDe, nomeMes, paraCentavos, type Centavos } from '../lib/format'
+import { valorNum } from '../lib/importadores/util'
 
 export function Modal({ titulo, aberto, fechar, children, largo }: { titulo: string; aberto: boolean; fechar: () => void; children: ReactNode; largo?: boolean }) {
   useEffect(() => {
@@ -21,6 +22,53 @@ export function Modal({ titulo, aberto, fechar, children, largo }: { titulo: str
         {children}
       </div>
     </div>
+  )
+}
+
+const MAX_DIGITOS = 11 // até R$ 999.999.999,99
+
+/**
+ * Campo de dinheiro: guarda e devolve CENTAVOS (inteiro) e mostra "R$ 1.234,56".
+ * Só aceita números — os dígitos entram pela direita, como numa maquininha de cartão
+ * (digitar 1, 2, 3, 4 → R$ 12,34). Colar "R$ 1.234,56" ou "1234.56" também funciona.
+ */
+export function InputMoeda({ valor, onChange, onBlur, vazioQuandoZero, placeholder = 'R$ 0,00', autoFocus, id, className = '' }: {
+  valor: Centavos
+  onChange: (centavos: Centavos) => void
+  onBlur?: () => void
+  vazioQuandoZero?: boolean
+  placeholder?: string
+  autoFocus?: boolean
+  id?: string
+  className?: string
+}) {
+  const texto = vazioQuandoZero && !valor ? '' : `R$ ${formatarCentavos(valor)}`
+  return (
+    <input
+      id={id}
+      className={`input tabular-nums ${className}`}
+      inputMode="numeric"
+      autoComplete="off"
+      autoFocus={autoFocus}
+      placeholder={placeholder}
+      value={texto}
+      onBlur={onBlur}
+      onChange={(e) => {
+        const digitos = e.target.value.replace(/\D/g, '').replace(/^0+/, '').slice(0, MAX_DIGITOS)
+        onChange(digitos ? Number(digitos) : 0)
+      }}
+      onPaste={(e) => {
+        const colado = e.clipboardData.getData('text')
+        const reais = valorNum(colado)
+        if (Number.isFinite(reais)) { e.preventDefault(); onChange(Math.min(paraCentavos(Math.abs(reais)), 10 ** MAX_DIGITOS - 1)) }
+      }}
+      onKeyDown={(e) => {
+        // cursor sempre no fim: Delete zera, setas/Home não "entram" no meio do número
+        if (e.key === 'Delete') { e.preventDefault(); onChange(0) }
+      }}
+      onFocus={(e) => { const el = e.currentTarget; requestAnimationFrame(() => el.setSelectionRange(el.value.length, el.value.length)) }}
+      onClick={(e) => { const el = e.currentTarget; el.setSelectionRange(el.value.length, el.value.length) }}
+    />
   )
 }
 

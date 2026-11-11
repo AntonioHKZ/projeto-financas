@@ -1,5 +1,6 @@
 import { createContext, useContext } from 'react'
 import type { Lancamento, Mes, Parcelado, Recorrente } from '../lib/types'
+import type { OpcaoVisao } from '../lib/visao'
 
 export type Pagina = 'painel' | 'extrato' | 'parcelados' | 'assinaturas' | 'importar' | 'personalizar'
 
@@ -19,6 +20,9 @@ export interface Ctx {
   ir: (p: Pagina, filtros?: FiltrosExtrato) => void
   filtrosIniciais: FiltrosExtrato
   editar: (e: Edicao) => void
+  visao: string // '' = todos os bancos
+  setVisao: (v: string) => void
+  opcoesVisao: OpcaoVisao[]
 }
 
 export const AppCtx = createContext<Ctx>(null as any)

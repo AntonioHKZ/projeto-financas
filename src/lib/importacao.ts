@@ -1,6 +1,7 @@
 import { db } from './db'
 import { addMes, dataNoMes, normalizar, uid } from './format'
 import { recorrenteAtivo } from './mes'
+import { bancoDaConta, mesmoBanco } from './visao'
 import type { TransacaoBruta, FonteImport } from './importadores'
 import type { Conta, Dados, Lancamento, Parcelado, Recorrente, Regra } from './types'
 
@@ -113,12 +114,12 @@ export function contaDestino(fonte: FonteImport, contas: Conta[], banco?: string
   const tipo = fonte === 'cartao' ? 'cartao' : 'conta'
   const doTipo = contas.filter((c) => c.tipo === tipo)
   if (banco) {
-    const achada = doTipo.find((c) => normalizar(c.nome).includes(normalizar(banco)))
+    const achada = doTipo.find((c) => mesmoBanco(bancoDaConta(c), banco))
     if (achada) return { contaId: achada.id }
   } else if (doTipo.length) return { contaId: doTipo[0].id }
   const nome = banco ? `${banco} ${fonte === 'cartao' ? 'Cartão' : 'Conta'}` : fonte === 'cartao' ? 'Cartão de crédito' : 'Conta corrente'
   // só é gravada quando o usuário confirma a importação
-  return { nova: { id: uid(), nome, tipo, cor: (banco && COR_BANCO[banco]) || '#64748b', diaVencimento: fonte === 'cartao' ? 10 : undefined } }
+  return { nova: { id: uid(), nome, tipo, banco, cor: (banco && COR_BANCO[banco]) || '#64748b', diaVencimento: fonte === 'cartao' ? 10 : undefined } }
 }
 
 export interface ResumoImport { avulsos: number; parcelados: number; assinaturas: number; regras: number }
