@@ -2,6 +2,9 @@ import { createContext, useContext } from 'react'
 import type { Lancamento, Mes, Parcelado, Recorrente } from '../lib/types'
 import type { OpcaoVisao } from '../lib/visao'
 
+/** Valor do filtro de categoria que mostra os itens sem categoria (ou com categoria apagada). */
+export const SEM_CATEGORIA = '__sem'
+
 export type Pagina = 'painel' | 'extrato' | 'parcelados' | 'assinaturas' | 'importar' | 'personalizar'
 
 export interface FiltrosExtrato {

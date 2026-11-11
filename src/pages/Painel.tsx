@@ -4,7 +4,7 @@ import { ArrowDownCircle, ArrowUpCircle, Wallet, Clock, Check, Settings, Sparkle
 import { criarSugestoes } from '../lib/db'
 import { carregarExemplo } from '../lib/exemplo'
 import { confirmar } from '../components/Dialogos'
-import { useApp } from '../app/contexto'
+import { SEM_CATEGORIA, useApp } from '../app/contexto'
 import { Cabecalho } from '../components/Cabecalho'
 import { Barra, Vazio } from '../components/ui'
 import { gerarMes, resumo } from '../lib/mes'
@@ -38,7 +38,11 @@ export default function Painel({ dados }: { dados: Dados }) {
 
   const porCategoria = useMemo(() => {
     const m = new Map<string, number>()
-    for (const i of itens) if (i.tipo === 'despesa') m.set(i.categoriaId ?? '', (m.get(i.categoriaId ?? '') ?? 0) + i.valor)
+    for (const i of itens) if (i.tipo === 'despesa') {
+      // categoria apagada conta como "Sem categoria"
+      const k = dados.categorias.some((c) => c.id === i.categoriaId) ? i.categoriaId! : ''
+      m.set(k, (m.get(k) ?? 0) + i.valor)
+    }
     return [...m.entries()].map(([id, valor]) => {
       const c = catDe(id)
       return { id, nome: c ? `${c.emoji} ${c.nome}` : 'Sem categoria', valor, cor: c?.cor ?? '#94a3b8' }
@@ -92,7 +96,7 @@ export default function Painel({ dados }: { dados: Dados }) {
                 <ResponsiveContainer>
                   <PieChart>
                     <Pie data={porCategoria} dataKey="valor" nameKey="nome" innerRadius="58%" outerRadius="90%" paddingAngle={2} stroke="none"
-                      onClick={(_, i) => ir('extrato', { categoriaId: porCategoria[i]?.id || undefined })} className="cursor-pointer">
+                      onClick={(_, i) => ir('extrato', { categoriaId: porCategoria[i]?.id || SEM_CATEGORIA })} className="cursor-pointer">
                       {porCategoria.map((p) => <Cell key={p.id} fill={p.cor} />)}
                     </Pie>
                     <Tooltip formatter={(v) => moeda(Number(v))} />
@@ -102,7 +106,7 @@ export default function Painel({ dados }: { dados: Dados }) {
               <ul className="mt-2 space-y-1 text-sm">
                 {porCategoria.map((p) => (
                   <li key={p.id}>
-                    <button className="flex w-full items-center gap-2 rounded px-1 py-0.5 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => ir('extrato', { categoriaId: p.id || undefined })}>
+                    <button className="flex w-full items-center gap-2 rounded px-1 py-0.5 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => ir('extrato', { categoriaId: p.id || SEM_CATEGORIA })}>
                       <span className="h-2.5 w-2.5 rounded-full" style={{ background: p.cor }} />
                       <span className="flex-1 text-left">{p.nome}</span>
                       <span className="font-medium">{moeda(p.valor)}</span>

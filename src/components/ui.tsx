@@ -93,10 +93,14 @@ export function SeletorMes({ mes, setMes }: { mes: Mes; setMes: (m: Mes) => void
   )
 }
 
-export function SelectCategoria({ categorias, value, onChange, vazio = 'Sem categoria' }: { categorias: Categoria[]; value?: string; onChange: (v: string) => void; vazio?: string }) {
+export function SelectCategoria({ categorias, value, onChange, vazio = 'Sem categoria', extras = [], className = '' }: {
+  categorias: Categoria[]; value?: string; onChange: (v: string) => void; vazio?: string
+  extras?: { value: string; label: string }[]; className?: string
+}) {
   return (
-    <select className="input" value={value ?? ''} onChange={(e) => onChange(e.target.value)}>
+    <select className={`input ${className}`} value={value ?? ''} onChange={(e) => onChange(e.target.value)}>
       <option value="">{vazio}</option>
+      {extras.map((x) => <option key={x.value} value={x.value}>{x.label}</option>)}
       {categorias.map((c) => <option key={c.id} value={c.id}>{c.emoji} {c.nome}</option>)}
     </select>
   )

@@ -68,6 +68,7 @@ export default function Importar({ dados }: { dados: Dados }) {
     if (!res) return
     const r = await salvarImportacao(linhas, { fonte: res.fonte, contaId, contaNova, mesFatura: mesFatura || undefined, dados })
     setFeito(r)
+    setContaNova(undefined)
     setRes(undefined)
     setLinhas([])
   }
@@ -130,7 +131,7 @@ export default function Importar({ dados }: { dados: Dados }) {
         <div>
           <div className="card mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div><span className="label">Arquivo</span><div className="truncate text-sm font-medium">{arquivo}</div><div className="text-xs text-slate-500">{res.formato}</div></div>
-            <div><span className="label">Lançar na conta / cartão</span><SelectConta contas={contaNova ? [...dados.contas, { ...contaNova, nome: `${contaNova.nome} (nova)` }] : dados.contas} value={contaId} onChange={setContaId} vazio="Escolha…" /></div>
+            <div><span className="label">Lançar na conta / cartão</span><SelectConta contas={contaNova && !dados.contas.some((c) => c.id === contaNova.id) ? [...dados.contas, { ...contaNova, nome: `${contaNova.nome} (nova)` }] : dados.contas} value={contaId} onChange={setContaId} vazio="Escolha…" /></div>
             {res.fonte === 'cartao' ? (
               <div>
                 <span className="label">Mês da fatura (vencimento)</span>

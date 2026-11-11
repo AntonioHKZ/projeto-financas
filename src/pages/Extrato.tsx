@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Check, Pencil, Trash2, Search, X } from 'lucide-react'
-import { useApp } from '../app/contexto'
+import { SEM_CATEGORIA, useApp } from '../app/contexto'
 import { Cabecalho } from '../components/Cabecalho'
 import { BadgeCategoria, SelectCategoria, SelectConta, Vazio } from '../components/ui'
 import { gerarMes, resumo } from '../lib/mes'
@@ -22,16 +22,17 @@ export default function Extrato({ dados }: { dados: Dados }) {
     setContaId(filtrosIniciais.contaId ?? '')
   }, [filtrosIniciais])
 
+  const idsCategorias = useMemo(() => new Set(dados.categorias.map((c) => c.id)), [dados.categorias])
   const todos = useMemo(() => gerarMes(mes, dados), [mes, dados])
   const itens = useMemo(() => {
     const q = normalizar(busca)
     return todos.filter((i) =>
       (!q || normalizar(i.descricao).includes(q)) &&
-      (!categoriaId || (i.categoriaId ?? '') === categoriaId) &&
+      (!categoriaId || (categoriaId === SEM_CATEGORIA ? !idsCategorias.has(i.categoriaId ?? '') : i.categoriaId === categoriaId)) &&
       (!contaId || (i.contaId ?? '') === contaId) &&
       (!status || (status === 'pago') === i.pago) &&
       (!tipo || i.tipo === tipo))
-  }, [todos, busca, categoriaId, contaId, status, tipo])
+  }, [todos, busca, categoriaId, contaId, status, tipo, idsCategorias])
 
   const grupos = useMemo(() => {
     const m = new Map<string, ItemMes[]>()
@@ -65,7 +66,7 @@ export default function Extrato({ dados }: { dados: Dados }) {
           <Search size={16} className="absolute left-3 top-2.5 text-slate-400" />
           <input className="input !pl-9" placeholder="Buscar descrição…" value={busca} onChange={(e) => setBusca(e.target.value)} />
         </div>
-        <SelectCategoria categorias={dados.categorias} value={categoriaId} onChange={setCategoriaId} vazio="Todas as categorias" />
+        <SelectCategoria categorias={dados.categorias} value={categoriaId} onChange={setCategoriaId} vazio="Todas as categorias" extras={[{ value: SEM_CATEGORIA, label: '⚪ Sem categoria' }]} />
         <SelectConta contas={dados.contas} value={contaId} onChange={setContaId} vazio="Todas as contas" />
         <select className="input" value={status} onChange={(e) => setStatus(e.target.value as any)}>
           <option value="">Pagos e pendentes</option><option value="pago">Só pagos</option><option value="pendente">Só pendentes</option>
