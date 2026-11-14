@@ -11,6 +11,7 @@ export interface TransacaoBruta {
   hash: string // identificador estável para evitar duplicatas
   parcela?: { n: number; total: number }
   ignorarPadrao?: string // motivo para vir desmarcado
+  categoriaBanco?: string // categoria que o próprio banco informou no arquivo (ex.: "SUPERMERCADOS")
 }
 
 export interface ResultadoParse {
@@ -29,6 +30,7 @@ export interface Mapeamento {
   colValor: number // -1 quando o arquivo usa colunas separadas de crédito/débito
   colCredito: number
   colDebito: number
+  colCategoria: number // coluna com a categoria do banco (-1 = não tem)
   fonte: FonteImport // cartão: valor positivo = gasto · conta: valor negativo = gasto
   inverter: boolean
 }

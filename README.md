@@ -30,7 +30,7 @@ Reúne em um só lugar os gastos do dia a dia, as compras parceladas que ainda v
 **Importação de extratos e faturas**
 - Arraste o arquivo exportado pelo seu banco e revise antes de salvar
 - Parcelas viram compras parceladas automaticamente; reimportar não duplica nada
-- Sugere categorias e aprende com as suas correções
+- Sugere a categoria de cada item pelo nome da loja ou pela categoria que o próprio banco informa, cria as que faltam e aprende com as suas correções
 
 **Personalização**
 - Tema claro/escuro e cor de destaque

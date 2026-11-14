@@ -106,6 +106,12 @@ export function motivoIgnorar(desc: string, fonte: 'cartao' | 'conta', tipo: 'de
   return undefined
 }
 
+/** Categoria informada pelo banco: tira espaços e descarta vazios como "-" ou "n/a". */
+export function limparCategoriaBanco(c?: string): string | undefined {
+  const t = (c ?? '').trim().replace(/\s+/g, ' ')
+  return /[a-zA-ZÀ-ÿ]{2}/.test(t) && !/^(n\/?a|sem categoria)$/i.test(t) ? t : undefined
+}
+
 export function hashTexto(s: string): string {
   let h = 5381
   for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0

@@ -4,7 +4,7 @@
  */
 import { arred, normalizar, paraCentavos } from '../format'
 import type { FonteImport, Mapeamento, ResultadoParse, TransacaoBruta } from './tipos'
-import { contador, extrairParcela, hashTexto, limparDescConta, mesFaturaSugerido, motivoIgnorar, parseData, slug, valorNum } from './util'
+import { contador, extrairParcela, hashTexto, limparCategoriaBanco, limparDescConta, mesFaturaSugerido, motivoIgnorar, parseData, slug, valorNum } from './util'
 
 const RE = {
   data: /^(data|date|dt)\b|data (de |do |da )?(lancamento|compra|movimento|transacao|mov)/,
@@ -12,7 +12,8 @@ const RE = {
   credito: /^(credito|entrada|entradas|receita)s?\b/,
   debito: /^(debito|saida|saidas|despesa)s?\b/,
   desc: /descri|historico|title|titulo|estabelecimento|memo|detalhe|lancamento|transacao|nome|favorecido/,
-  ignorar: /saldo|balance|categoria|parcela$|cotacao|dolar|us\$/,
+  ignorar: /saldo|balance|categoria|category|parcela$|cotacao|dolar|us\$/,
+  categoria: /^(categoria|category|ramo|segmento)( |$)|ramo de atividade|tipo de (gasto|despesa|estabelecimento)/,
 }
 
 function acharColuna(cab: string[], re: RegExp, usados: Set<number>): number {
@@ -32,7 +33,7 @@ function mapearPeloCabecalho(linhas: string[][]): Omit<Mapeamento, 'fonte' | 'in
     const colDebito = colValor < 0 ? acharColuna(cab, RE.debito, usados) : -1
     const colDesc = acharColuna(cab, RE.desc, usados)
     if (colData >= 0 && colDesc >= 0 && (colValor >= 0 || (colCredito >= 0 && colDebito >= 0)))
-      return { linhaCabecalho: i, colData, colDesc, colValor, colCredito, colDebito }
+      return { linhaCabecalho: i, colData, colDesc, colValor, colCredito, colDebito, colCategoria: cab.findIndex((c, k) => !usados.has(k) && RE.categoria.test(c)) }
   }
   return undefined
 }
@@ -50,7 +51,7 @@ function mapearPeloConteudo(linhas: string[][]): Omit<Mapeamento, 'fonte' | 'inv
     if (texto > melhorTexto) { melhorTexto = texto; colDesc = k }
   }
   const primeiraValida = linhas.findIndex((l) => colData >= 0 && parseData(l[colData] ?? ''))
-  return { linhaCabecalho: primeiraValida - 1, colData, colDesc, colValor, colCredito: -1, colDebito: -1 }
+  return { linhaCabecalho: primeiraValida - 1, colData, colDesc, colValor, colCredito: -1, colDebito: -1, colCategoria: -1 }
 }
 
 export function sugerirMapeamento(linhas: string[][], nomeArquivo?: string): Mapeamento {
@@ -93,6 +94,7 @@ export function parseComMapeamento(linhas: string[][], map: Mapeamento, nomeArqu
       parcela: tipo === 'despesa' ? parcela : undefined,
       hash: `${prefixo}:` + unico(`${data}|${arred(v)}|${hashTexto(normalizar(bruto))}`),
       ignorarPadrao: motivoIgnorar(bruto, map.fonte, tipo),
+      categoriaBanco: limparCategoriaBanco(map.colCategoria >= 0 ? l[map.colCategoria] : undefined),
     })
   }
   return {

@@ -1,10 +1,10 @@
 import { useMemo, useRef, useState } from 'react'
-import { FileUp, ShieldCheck, Info, CheckCircle2, Landmark, ArrowRight } from 'lucide-react'
+import { FileUp, ShieldCheck, Info, CheckCircle2, Landmark, ArrowRight, Tags } from 'lucide-react'
 import { useApp } from '../app/contexto'
 import { Cabecalho } from '../components/Cabecalho'
 import { Campo, SelectCategoria, SelectConta } from '../components/ui'
 import { decodificar, lerArquivo, parseComMapeamento, type Mapeamento, type ResultadoParse } from '../lib/importadores'
-import { analisar, contaDestino, salvarImportacao, type Acao, type LinhaRevisao, type ResumoImport } from '../lib/importacao'
+import { analisar, categoriasNovasDisponiveis, contaDestino, ehNova, PREFIXO_NOVA, salvarImportacao, type Acao, type LinhaRevisao, type ResumoImport } from '../lib/importacao'
 import { dataBR, moeda, nomeMes } from '../lib/format'
 import type { Conta, Dados } from '../lib/types'
 
@@ -60,6 +60,17 @@ export default function Importar({ dados }: { dados: Dados }) {
   }
 
   const mudar = (id: string, m: Partial<LinhaRevisao>) => setLinhas((ls) => ls.map((l) => (l.id === id ? { ...l, ...m } : l)))
+
+  // categorias padrão que ainda não existem aparecem na lista como "(nova)"; só são criadas se usadas
+  const categoriasRevisao = useMemo(() => [
+    ...dados.categorias,
+    ...categoriasNovasDisponiveis(dados.categorias).map((c) => ({ ...c, nome: `${c.nome} (nova)` })),
+  ], [dados.categorias])
+  const novasUsadas = useMemo(() => {
+    const ids = new Set(linhas.filter((l) => l.incluir && ehNova(l.categoriaId)).map((l) => l.categoriaId!))
+    return categoriasRevisao.filter((c) => ids.has(c.id)).map((c) => `${c.emoji} ${c.id.slice(PREFIXO_NOVA.length)}`)
+  }, [linhas, categoriasRevisao])
+
   const incluidas = linhas.filter((l) => l.incluir)
   const total = incluidas.reduce((s, l) => s + (l.t.tipo === 'despesa' ? l.t.valor : -l.t.valor), 0)
   const visiveis = useMemo(() => linhas.filter((l) => filtro === 'todos' || (filtro === 'incluidos') === l.incluir), [linhas, filtro])
@@ -83,10 +94,13 @@ export default function Importar({ dados }: { dados: Dados }) {
         <div className="card mb-4 flex flex-wrap items-center gap-3 border-emerald-500/40 bg-emerald-500/5">
           <CheckCircle2 className="text-emerald-500" />
           <div className="flex-1 text-sm">
-            Importação concluída: <b>{feito.avulsos}</b> lançamentos, <b>{feito.parcelados}</b> parcelados, <b>{feito.assinaturas}</b> assinaturas
-            {feito.regras > 0 && <> · <b>{feito.regras}</b> regra(s) de categoria aprendida(s)</>}.
+            <div>
+              Importação concluída: <b>{feito.avulsos}</b> lançamentos, <b>{feito.parcelados}</b> parcelados, <b>{feito.assinaturas}</b> assinaturas
+              {feito.regras > 0 && <> · <b>{feito.regras}</b> regra(s) de categoria aprendida(s)</>}.
+            </div>
+            {feito.categoriasCriadas.length > 0 && <div className="mt-1 text-slate-500">Categorias criadas: {feito.categoriasCriadas.join(', ')}.</div>}
           </div>
-          <button className="btn-primary" onClick={() => { if (mesFatura) setMes(mesFatura); ir('extrato') }}>Ver extrato</button>
+          <button className="btn-primary" onClick={() => { if (feito.mesPrincipal) setMes(feito.mesPrincipal); ir('extrato') }}>Ver extrato</button>
         </div>
       )}
 
@@ -148,6 +162,16 @@ export default function Importar({ dados }: { dados: Dados }) {
             </div>
           </div>
 
+          {novasUsadas.length > 0 && (
+            <div className="mb-3 flex items-start gap-2 rounded-xl border border-emerald-500/40 bg-emerald-500/5 px-3 py-2 text-sm">
+              <Tags size={16} className="mt-0.5 shrink-0 text-emerald-600" />
+              <div>
+                Ao importar, {novasUsadas.length === 1 ? 'esta categoria será criada' : `estas ${novasUsadas.length} categorias serão criadas`}: <b>{novasUsadas.join(', ')}</b>.
+                <span className="text-slate-500"> Se não quiser alguma, troque a categoria dos itens marcados em verde.</span>
+              </div>
+            </div>
+          )}
+
           <div className="mb-2 flex flex-wrap items-center gap-2 text-sm">
             {(['todos', 'incluidos', 'ignorados'] as const).map((f) => (
               <button key={f} className={filtro === f ? 'btn-primary !py-1' : 'btn-outline !py-1'} onClick={() => setFiltro(f)}>
@@ -155,7 +179,7 @@ export default function Importar({ dados }: { dados: Dados }) {
               </button>
             ))}
             <span className="ml-auto flex items-center gap-1 text-xs text-slate-500">
-              <Info size={14} /> {dados.categorias.length ? 'Mudar uma categoria cria uma regra para as próximas importações.' : 'Crie categorias em Personalizar para receber sugestões automáticas.'}
+              <Info size={14} /> Categorias marcadas como “(nova)” só são criadas se você importar. Mudar uma categoria vira regra para as próximas importações.
             </span>
           </div>
 
@@ -174,6 +198,7 @@ export default function Importar({ dados }: { dados: Dados }) {
                     <td className="whitespace-nowrap p-3 text-slate-500">{dataBR(l.t.data)}</td>
                     <td className="p-3">
                       <div>{l.t.descricao}</div>
+                      {l.t.categoriaBanco && <div className="text-xs text-slate-400">no banco: {l.t.categoriaBanco}</div>}
                       {l.aviso && <div className="text-xs text-amber-600">{l.aviso}</div>}
                       {l.sugestaoAssinatura && l.acao !== 'assinatura' && <div className="text-xs text-indigo-500">Parece assinatura</div>}
                     </td>
@@ -185,7 +210,7 @@ export default function Importar({ dados }: { dados: Dados }) {
                         {l.t.tipo === 'despesa' && !l.t.parcela && <option value="assinatura">Assinatura (todo mês)</option>}
                       </select>
                     </td>
-                    <td className="w-52 p-3"><SelectCategoria categorias={dados.categorias} value={l.categoriaId} onChange={(v) => mudar(l.id, { categoriaId: v || undefined })} /></td>
+                    <td className="w-52 p-3"><SelectCategoria categorias={categoriasRevisao} value={l.categoriaId} onChange={(v) => mudar(l.id, { categoriaId: v || undefined })} className={ehNova(l.categoriaId) ? '!border-emerald-500/60' : ''} /></td>
                   </tr>
                 ))}
               </tbody>
@@ -248,6 +273,7 @@ function PainelMapeamento({ estado, setEstado, arquivo, erro, cancelar, confirma
         ) : (
           <Campo label="Coluna do valor"><SelCol valor={map.colValor} onChange={(k) => set({ colValor: k })} /></Campo>
         )}
+        <Campo label="Coluna da categoria do banco (opcional)"><SelCol valor={map.colCategoria} onChange={(k) => set({ colCategoria: k })} /></Campo>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={map.inverter} onChange={(e) => set({ inverter: e.target.checked })} />
           Inverter sinais (use se gastos aparecerem como receitas na prévia)
@@ -270,7 +296,7 @@ function PainelMapeamento({ estado, setEstado, arquivo, erro, cancelar, confirma
               {prev.slice(0, 12).map((t) => (
                 <tr key={t.hash}>
                   <td className="whitespace-nowrap py-1.5 pr-3 text-slate-500">{dataBR(t.data)}</td>
-                  <td className="py-1.5 pr-3">{t.descricao}{t.parcela && <span className="ml-1 text-xs text-amber-600">({t.parcela.n}/{t.parcela.total})</span>}</td>
+                  <td className="py-1.5 pr-3">{t.descricao}{t.parcela && <span className="ml-1 text-xs text-amber-600">({t.parcela.n}/{t.parcela.total})</span>}{t.categoriaBanco && <span className="ml-2 text-xs text-slate-400">{t.categoriaBanco}</span>}</td>
                   <td className={`whitespace-nowrap py-1.5 text-right font-medium ${t.tipo === 'receita' ? 'text-emerald-600' : 'text-rose-600'}`}>{t.tipo === 'receita' ? '+' : '−'}{moeda(t.valor)}</td>
                 </tr>
               ))}

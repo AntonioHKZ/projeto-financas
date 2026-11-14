@@ -1,7 +1,7 @@
 /** Formatos CSV conhecidos do Nubank (reconhecidos automaticamente pelo cabeçalho). */
 import { arred, normalizar, paraCentavos } from '../format'
 import type { ResultadoParse, TransacaoBruta } from './tipos'
-import { contador, extrairParcela, hashTexto, limparDescConta, mesFaturaSugerido, motivoIgnorar, valorNum } from './util'
+import { contador, extrairParcela, hashTexto, limparCategoriaBanco, limparDescConta, mesFaturaSugerido, motivoIgnorar, valorNum } from './util'
 
 export function ehFaturaNubank(cab: string[]) {
   return cab.includes('date') && cab.includes('title') && cab.includes('amount')
@@ -15,6 +15,7 @@ export function ehExtratoNubank(cab: string[]) {
 export function parseFaturaNubank(linhas: string[][], nomeArquivo?: string): ResultadoParse {
   const cab = linhas[0].map((c) => normalizar(c))
   const iD = cab.indexOf('date'), iT = cab.indexOf('title'), iA = cab.indexOf('amount')
+  const iC = cab.indexOf('category') // só nas exportações antigas do Nubank
   const unico = contador()
   const transacoes: TransacaoBruta[] = []
   for (const l of linhas.slice(1)) {
@@ -29,6 +30,7 @@ export function parseFaturaNubank(linhas: string[][], nomeArquivo?: string): Res
       parcela: tipo === 'despesa' ? parcela : undefined,
       hash: 'nu-cartao:' + unico(`${data}|${arred(v)}|${hashTexto(normalizar(titulo))}`),
       ignorarPadrao: motivoIgnorar(titulo, 'cartao', tipo),
+      categoriaBanco: limparCategoriaBanco(iC >= 0 ? l[iC] : undefined),
     })
   }
   return { formato: 'CSV · fatura do cartão Nubank', banco: 'Nubank', fonte: 'cartao', transacoes, mesFatura: mesFaturaSugerido(transacoes, nomeArquivo) }
